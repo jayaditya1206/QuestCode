@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Quest Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sticky command bar + tab rail; content column max 1180px; tracks drawn as a winding level path on a narrow rail beside level cards. */
+:root{
+  --bg:#EDF0F5; --surface:#FFFFFF; --surface-2:#F5F7FA; --ink:#131A2B; --ink-2:#465067; --ink-3:#737D93;
+  --line:#DBE0E9; --line-2:#C5CCDA;
+  --accent:#2D4BDB; --accent-ink:#FFFFFF; --accent-soft:#E2E7FC;
+  --gold:#A96F08; --gold-soft:#FAEFD6;
+  --ok:#1D8556; --ok-soft:#DCF2E6; --warn:#9E6500; --warn-soft:#FBEDCF; --bad:#C2372B; --bad-soft:#FADFDB;
+  --mute:#727B8F; --mute-soft:#E7EAF0; --violet:#6643D1; --violet-soft:#EBE5FB; --orange:#BF5214; --orange-soft:#FCE5D5;
+  --scrim:rgba(19,26,43,.45);
+  --shadow:0 1px 2px rgba(19,26,43,.06),0 10px 28px -14px rgba(19,26,43,.22);
+  --f-display:'Unbounded','Arial Black',system-ui,sans-serif;
+  --f-body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1220; --surface:#151C2D; --surface-2:#1B2337; --ink:#E7EBF4; --ink-2:#A9B2C6; --ink-3:#7A849A;
+  --line:#283149; --line-2:#36405B;
+  --accent:#7D93FF; --accent-ink:#0D1220; --accent-soft:#222C55;
+  --gold:#F0B544; --gold-soft:#3A2D12;
+  --ok:#4CC98E; --ok-soft:#133829; --warn:#F2B33D; --warn-soft:#3B2D0F; --bad:#FF7B6C; --bad-soft:#431B17;
+  --mute:#8A94AA; --mute-soft:#232B3F; --violet:#A98EFF; --violet-soft:#2B2250; --orange:#FF9C5C; --orange-soft:#422616;
+  --scrim:rgba(0,0,0,.6);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0D1220; --surface:#151C2D; --surface-2:#1B2337; --ink:#E7EBF4; --ink-2:#A9B2C6; --ink-3:#7A849A;
+  --line:#283149; --line-2:#36405B;
+  --accent:#7D93FF; --accent-ink:#0D1220; --accent-soft:#222C55;
+  --gold:#F0B544; --gold-soft:#3A2D12;
+  --ok:#4CC98E; --ok-soft:#133829; --warn:#F2B33D; --warn-soft:#3B2D0F; --bad:#FF7B6C; --bad-soft:#431B17;
+  --mute:#8A94AA; --mute-soft:#232B3F; --violet:#A98EFF; --violet-soft:#2B2250; --orange:#FF9C5C; --orange-soft:#422616;
+  --scrim:rgba(0,0,0,.6);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+h1,h2,h3,h4{margin:0;text-wrap:balance}
+p{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.ic{width:1em;height:1em;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- header ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-inner{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 0;display:flex;flex-direction:column;gap:10px}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.brand-mark svg{width:20px;height:20px}
+.brand h1{font-family:var(--f-display);font-size:18px;font-weight:700;letter-spacing:-.01em}
+.brand small{display:block;font-size:12px;color:var(--ink-3);font-weight:500;letter-spacing:.02em}
+.role{display:flex;align-items:center;gap:8px;min-width:0}
+.role label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.role select{max-width:260px;padding:7px 30px 7px 10px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface-2);font-weight:600;font-size:14px}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -4px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:10px 12px 12px;font-weight:600;color:var(--ink-3);border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--ink)}
+.tab[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.count{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:99px;background:var(--violet);color:var(--accent-ink)}
+.banner{max-width:1180px;margin:12px auto 0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.banner p{padding:10px 14px;border-radius:10px;background:var(--warn-soft);color:var(--ink);font-size:13.5px}
+
+main{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 64px;display:flex;flex-direction:column;gap:26px}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.h2{font-family:var(--f-display);font-size:22px;font-weight:700;letter-spacing:-.015em;margin-top:2px}
+.sub{color:var(--ink-2);font-size:14px;max-width:62ch}
+
+/* ---------- buttons, pills ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;border-radius:10px;border:1px solid transparent;font-weight:600;font-size:14px;line-height:1.2;background:var(--accent);color:var(--accent-ink)}
+.btn:hover{filter:brightness(1.07)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;filter:none}
+.btn-ok{background:var(--ok);color:var(--accent-ink)}
+.btn-ghost{background:var(--surface);color:var(--ink);border-color:var(--line-2)}
+.btn-ghost:hover{background:var(--surface-2);filter:none}
+.btn-danger{background:var(--surface);color:var(--bad);border-color:var(--line-2)}
+.btn-danger.armed{background:var(--bad);color:var(--accent-ink);border-color:var(--bad)}
+.btn-sm{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.01em;white-space:nowrap}
+.st-locked{background:var(--mute-soft);color:var(--mute)}
+.st-prog{background:var(--accent-soft);color:var(--accent)}
+.st-sub{background:var(--violet-soft);color:var(--violet)}
+.st-fb{background:var(--orange-soft);color:var(--orange)}
+.st-rev{background:var(--orange-soft);color:var(--orange);box-shadow:inset 0 0 0 1px currentColor}
+.st-done{background:var(--ok-soft);color:var(--ok)}
+.dl{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.dl-ok{background:var(--ok-soft);color:var(--ok)}
+.dl-warn{background:var(--warn-soft);color:var(--warn)}
+.dl-bad{background:var(--bad-soft);color:var(--bad)}
+.dl-over{background:var(--mute-soft);color:var(--mute);text-decoration:none}
+.dl-over .ic{color:var(--bad)}
+.dl-plain{background:transparent;color:var(--ink-3);padding-left:0}
+.badge-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 4px;border-radius:99px;background:var(--gold-soft);color:var(--gold);font-size:12px;font-weight:700}
+.badge-chip .medal{width:18px;height:18px;border-radius:50%;background:var(--gold);color:var(--surface);display:grid;place-items:center}
+.badge-chip .medal svg{width:11px;height:11px}
+
+/* ---------- summary strip ---------- */
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.strip > div{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.strip .n{font-family:var(--f-display);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.strip .l{font-size:12.5px;color:var(--ink-2)}
+.strip .n.warn{color:var(--warn)} .strip .n.bad{color:var(--bad)} .strip .n.violet{color:var(--violet)} .strip .n.gold{color:var(--gold)}
+@media (max-width:720px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ---------- team cards ---------- */
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.team-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.team-card .band{height:6px;background:var(--team)}
+.tc-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:14px}
+.tc-head{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.rank{font-family:var(--f-display);font-size:26px;font-weight:700;color:var(--team);line-height:1;min-width:34px}
+.tc-head h3{font-family:var(--f-display);font-size:16px;font-weight:700;letter-spacing:-.01em}
+.tc-head p{font-size:13px;color:var(--ink-2)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface-2);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column}
+.stat b{font-family:var(--f-mono);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:4px}
+.stat b .ic{color:var(--orange);width:15px;height:15px}
+.stat span{font-size:11.5px;color:var(--ink-3);font-weight:600}
+.segbar{display:flex;gap:4px}
+.seg{flex:1;height:10px;border-radius:3px;background:var(--mute-soft)}
+.seg.done{background:var(--team)}
+.seg.late{background:repeating-linear-gradient(135deg,var(--team) 0 4px,transparent 4px 7px);box-shadow:inset 0 0 0 1px var(--team)}
+.seg.active{background:var(--surface);box-shadow:inset 0 0 0 2px var(--team)}
+.seg-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);margin-top:6px}
+.current{display:flex;flex-direction:column;gap:8px;text-align:left;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);width:100%}
+.current:hover{border-color:var(--team)}
+.current .t{font-weight:700;font-size:14.5px}
+.current .t small{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.current .m{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.badges{display:flex;gap:6px;flex-wrap:wrap;min-height:24px}
+.badges .none{font-size:12.5px;color:var(--ink-3)}
+.people{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-3)}
+.avs{display:flex}
+.av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;background:var(--team,var(--accent));color:#fff;border:2px solid var(--surface);margin-left:-6px}
+.avs .av:first-child{margin-left:0}
+
+/* ---------- activity ---------- */
+.two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){.two{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h3{font-size:14px;font-weight:700}
+.feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.feed li{display:grid;grid-template-columns:10px 1fr auto;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px;align-items:baseline}
+.feed li:first-child{border-top:0}
+.feed .dot{width:8px;height:8px;border-radius:50%;background:var(--team);transform:translateY(-1px)}
+.feed time{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.feed .what{min-width:0}
+.feed .what b{font-weight:600}
+.rules{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px;font-size:13.5px;color:var(--ink-2)}
+.rules li{display:grid;grid-template-columns:22px 1fr;gap:6px}
+.rules .k{font-family:var(--f-mono);color:var(--accent);font-weight:600}
+.legend{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ---------- track ---------- */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;border:1px solid var(--line-2);background:var(--surface);font-weight:600;font-size:13.5px}
+.chip .sw{width:10px;height:10px;border-radius:50%;background:var(--team)}
+.chip[aria-pressed="true"]{border-color:var(--team);box-shadow:inset 0 0 0 1px var(--team);background:var(--surface-2)}
+.track-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:end;padding:18px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);position:relative;overflow:hidden}
+.track-head::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--team)}
+.track-head h2{font-family:var(--f-display);font-size:22px;font-weight:700}
+.track-head .stats{min-width:280px}
+@media (max-width:700px){.track-head{grid-template-columns:minmax(0,1fr)}.track-head .stats{min-width:0}}
+.map{position:relative;--rh:150px;--rail:116px}
+.map svg.path{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.map-row{position:relative;height:var(--rh);display:grid;grid-template-columns:var(--rail) minmax(0,1fr);align-items:center}
+.node{position:absolute;top:calc(50% - 28px);width:56px;height:56px;border-radius:50%;border:0;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:18px;background:var(--surface);color:var(--ink-3);box-shadow:inset 0 0 0 2px var(--line-2),var(--shadow);z-index:1;transition:transform .15s}
+.node:hover{transform:scale(1.06)}
+.node svg{width:22px;height:22px}
+.node.done{background:var(--team);color:#fff;box-shadow:var(--shadow)}
+.node.done.late{background:var(--surface);color:var(--team);box-shadow:inset 0 0 0 3px var(--team),var(--shadow)}
+.node.active{background:var(--surface);color:var(--team);box-shadow:inset 0 0 0 3px var(--team),0 0 0 6px color-mix(in srgb,var(--team) 22%,transparent),var(--shadow)}
+.node.finish{background:var(--gold-soft);color:var(--gold);box-shadow:inset 0 0 0 2px var(--gold),var(--shadow)}
+.node.finish.won{background:var(--gold);color:var(--surface)}
+@media (prefers-reduced-motion:no-preference){.node.active{animation:pulse 2.4s ease-in-out infinite}}
+@keyframes pulse{50%{box-shadow:inset 0 0 0 3px var(--team),0 0 0 11px color-mix(in srgb,var(--team) 10%,transparent),var(--shadow)}}
+.lvl-card{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:7px;max-width:640px;width:100%;box-shadow:var(--shadow)}
+.lvl-card:hover{border-color:var(--team)}
+.lvl-card.locked{background:var(--surface-2);box-shadow:none}
+.lvl-card.locked .lc-title{color:var(--ink-2)}
+.lc-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.lc-num{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.lc-title{font-weight:700;font-size:15.5px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.lc-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--ink-3)}
+.mini-prog{flex:1;min-width:60px;max-width:140px;height:5px;border-radius:3px;background:var(--mute-soft);overflow:hidden}
+.mini-prog i{display:block;height:100%;background:var(--team)}
+.finish-card{border-style:dashed;border-color:var(--gold);background:var(--gold-soft);box-shadow:none}
+.finish-card .lc-title{color:var(--ink)}
+@media (max-width:520px){.map{--rail:92px;--rh:156px}.node{width:48px;height:48px;top:calc(50% - 24px);font-size:16px}}
+
+/* ---------- modal / drawer ---------- */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40;display:flex;justify-content:flex-end}
+.drawer{background:var(--bg);width:min(620px,100%);height:100%;overflow-y:auto;display:flex;flex-direction:column;box-shadow:var(--shadow);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .22s ease-out}}
+@keyframes slide{from{transform:translateX(30px);opacity:.4}}
+.dr-head{background:var(--surface);border-bottom:1px solid var(--line);padding:16px max(20px,env(safe-area-inset-right,0px)) 16px 20px;display:flex;flex-direction:column;gap:10px;position:relative}
+.dr-head::before{content:"";position:absolute;inset:0 0 auto;height:5px;background:var(--team)}
+.dr-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.dr-head h2{font-family:var(--f-display);font-size:21px;font-weight:700;letter-spacing:-.01em}
+.close{border:1px solid var(--line-2);background:var(--surface);border-radius:10px;width:36px;height:36px;display:grid;place-items:center;flex:none}
+.close svg{width:18px;height:18px}
+.dr-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.worth{font-size:12.5px;color:var(--ink-2);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.worth b{color:var(--gold)}
+.dr-body{padding:18px max(20px,env(safe-area-inset-right,0px)) 32px 20px;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.card h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.card h3 .mono{letter-spacing:0;text-transform:none;color:var(--ink-2)}
+.steps{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.step{display:flex;flex-direction:column;gap:5px;font-size:10.5px;font-weight:700;color:var(--ink-3);letter-spacing:.02em}
+.step i{height:5px;border-radius:3px;background:var(--mute-soft)}
+.step.past i{background:var(--team)}
+.step.now{color:var(--ink)}
+.step.now i{background:var(--team);box-shadow:0 0 0 2px color-mix(in srgb,var(--team) 30%,transparent)}
+@media (max-width:480px){.step span{display:none}.step.now span{display:block;white-space:nowrap}}
+.brief{color:var(--ink-2);font-size:14px}
+.tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.task{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:8px 6px;border-radius:8px}
+.task:hover{background:var(--surface-2)}
+.task input{appearance:none;width:20px;height:20px;border-radius:6px;border:2px solid var(--line-2);margin:1px 0 0;display:grid;place-items:center;background:var(--surface);cursor:pointer}
+.task input:checked{background:var(--team);border-color:var(--team)}
+.task input:checked::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.task input:disabled{cursor:default}
+.task label{cursor:pointer;font-size:14.5px}
+.task.done label{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.task small{display:block;font-size:11.5px;color:var(--ink-3);text-decoration:none}
+.bar{height:6px;border-radius:3px;background:var(--mute-soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--team);transition:width .3s}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label,.lbl{font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.field input[type=text],.field input[type=url],.field input[type=number],.field input[type=datetime-local],.field textarea,.field select{width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface-2);font-size:14px}
+.field textarea{resize:vertical;min-height:70px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.field-row{grid-template-columns:1fr}}
+.file-drop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--ink-3)}
+.file-drop input{max-width:100%;font-size:13px}
+.hint{font-size:12.5px;color:var(--ink-3)}
+.hint.warn{color:var(--warn)}
+.note-box{border-radius:12px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.note-box.fb{background:var(--orange-soft)}
+.note-box.ok{background:var(--ok-soft)}
+.note-box.info{background:var(--surface-2)}
+.note-box.late{background:var(--mute-soft)}
+.note-box b{font-weight:700}
+.thread{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;position:relative}
+.thread li{display:grid;grid-template-columns:30px 1fr;gap:10px}
+.t-ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center}
+.t-ic svg{width:15px;height:15px}
+.t-ic.sub{background:var(--violet-soft);color:var(--violet)}
+.t-ic.changes{background:var(--orange-soft);color:var(--orange)}
+.t-ic.approve{background:var(--ok-soft);color:var(--ok)}
+.t-ic.sys{background:var(--mute-soft);color:var(--mute)}
+.t-body{min-width:0;display:flex;flex-direction:column;gap:4px;padding-top:4px}
+.t-meta{font-size:12.5px;color:var(--ink-3)}
+.t-meta b{color:var(--ink);font-weight:700}
+.t-text{font-size:14px;overflow-wrap:anywhere}
+.t-links{display:flex;gap:8px;flex-wrap:wrap}
+.t-link{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:4px 9px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);text-decoration:none;color:var(--accent);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty-t{font-size:13.5px;color:var(--ink-3)}
+
+/* ---------- review queue ---------- */
+.queue{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:16px}
+.q-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.q-card .band{height:5px;background:var(--team)}
+.q-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.q-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.q-head h3{font-size:16px;font-weight:700}
+.q-head small{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--team);font-weight:700}
+.empty{background:var(--surface);border:1px dashed var(--line-2);border-radius:var(--r);padding:28px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;color:var(--ink-2)}
+.empty svg{width:28px;height:28px;color:var(--ink-3)}
+.waiting{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.waiting li{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.waiting .who{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.waiting .who .sw{width:9px;height:9px;border-radius:50%;background:var(--team)}
+
+/* ---------- rewards ---------- */
+.catalogue{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:14px}
+.rw{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px}
+.rw-ic{width:40px;height:40px;border-radius:12px;background:var(--gold-soft);color:var(--gold);display:grid;place-items:center}
+.rw-ic svg{width:22px;height:22px}
+.rw h3{font-size:15.5px;font-weight:700}
+.rw p{font-size:13px;color:var(--ink-2)}
+.ms{font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:3px 8px;border-radius:6px;align-self:flex-start}
+.rw-teams{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.tag{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--mute-soft);color:var(--ink-3);display:inline-flex;gap:5px;align-items:center}
+.tag.on{background:color-mix(in srgb,var(--team) 16%,var(--surface));color:var(--ink)}
+.tag .sw{width:7px;height:7px;border-radius:50%;background:var(--team)}
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td .who{display:flex;gap:8px;align-items:center;font-weight:600}
+td .who .av{margin:0;border:0;width:24px;height:24px}
+.claim{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.claim .flow{display:inline-flex;align-items:center;gap:4px}
+.claim .on{color:var(--ok)}
+.claim .off{color:var(--ink-3)}
+.claim-pill{padding:3px 9px;border-radius:99px}
+.claim-pill.unl{background:var(--gold-soft);color:var(--gold)}
+.claim-pill.clm{background:var(--ok-soft);color:var(--ok)}
+
+/* ---------- setup ---------- */
+.setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.setup{grid-template-columns:minmax(0,1fr)}}
+.rowlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rowlist li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.rowlist .sw{width:12px;height:12px;border-radius:4px;background:var(--team)}
+.rowlist .nm{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rowlist .nm small{display:block;font-weight:500;font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowlist .num{font-family:var(--f-mono);font-size:12px;color:var(--ink-3);width:22px;text-align:center}
+.icon-btn{border:1px solid var(--line-2);background:var(--surface);border-radius:8px;width:30px;height:30px;display:inline-grid;place-items:center;color:var(--ink-2)}
+.icon-btn svg{width:15px;height:15px}
+.icon-btn[disabled]{opacity:.35;cursor:default}
+.acts{display:flex;gap:4px}
+
+.modal{background:var(--surface);border-radius:var(--r);width:min(560px,100%);max-height:calc(100% - 32px);overflow-y:auto;margin:auto;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.scrim.center{justify-content:center;align-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+.modal-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modal-head h2{font-family:var(--f-display);font-size:17px;font-weight:700}
+.modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.modal-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+
+/* ---------- celebration ---------- */
+.celebrate{text-align:center;padding:28px 22px 22px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.cel-medal{width:84px;height:84px;border-radius:50%;background:var(--gold);color:var(--surface);display:grid;place-items:center;box-shadow:0 0 0 8px var(--gold-soft)}
+.cel-medal svg{width:40px;height:40px}
+@media (prefers-reduced-motion:no-preference){.cel-medal{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}}
+@keyframes pop{from{transform:scale(.3);opacity:0}}
+.celebrate h2{font-family:var(--f-display);font-size:21px;font-weight:700}
+.cel-lines{list-style:none;margin:4px 0 6px;padding:0;display:flex;flex-direction:column;gap:6px;width:100%}
+.cel-lines li{display:flex;gap:10px;align-items:center;justify-content:center;padding:9px 12px;border-radius:10px;background:var(--surface-2);font-weight:600;font-size:14px}
+.cel-lines li svg{width:16px;height:16px;color:var(--gold)}
+canvas.confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+
+.toast-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:70;display:flex;flex-direction:column;gap:8px;width:min(460px,calc(100% - 32px))}
+.toast{background:var(--ink);color:var(--bg);padding:11px 14px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:var(--shadow)}
+.toast.bad{background:var(--bad);color:#fff}
+.loading{padding:60px 0;text-align:center;color:var(--ink-3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app">
+  <header class="top">
+    <div class="top-inner">
+      <div class="top-row">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" class="ic"><path d="M5 21V4h11l-2 4 2 4H5"/></svg></div>
+          <div><h1>Quest Board</h1><small>Marketing department</small></div>
+        </div>
+        <div class="role" id="role-slot"></div>
+      </div>
+      <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+    </div>
+  </header>
+  <div id="banner-slot"></div>
+  <main id="main"><p class="loading">Opening the board…</p></main>
+</div>
+<div id="modal-root"></div>
+<div class="toast-wrap" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+const DAY = 864e5, HOUR = 36e5, MIN = 6e4;
+const TEAM_COLORS = { teal:'#1E9E8F', coral:'#E2556B', violet:'#7357E0', saffron:'#C9870F', blue:'#2E7CD6', olive:'#5F8F2A' };
+const STATUS = {
+  locked:{label:'Locked',cls:'st-locked'}, in_progress:{label:'In progress',cls:'st-prog'},
+  submitted:{label:'Submitted',cls:'st-sub'}, feedback:{label:'Feedback given',cls:'st-fb'},
+  revision:{label:'Revision',cls:'st-rev'}, complete:{label:'Complete',cls:'st-done'}
+};
+const LIFECYCLE = ['locked','in_progress','submitted','feedback','revision','complete'];
+const ACTIVE = ['in_progress','submitted','feedback','revision'];
+const MILESTONES = { track:'Full track completed on time', streak:'On-time streak of', xp:'Team XP reaches' };
+
+/*SEED-START*/
+function buildSample(now) {
+  const d = n => Math.round(now + n * DAY), h = n => Math.round(now + n * HOUR);
+  let c = 0; const id = p => p + (++c).toString(36) + Math.random().toString(36).slice(2, 5);
+  const mk = (name, color, objective, members) => ({ id:id('t'), name, color, objective, members: members.map(m => ({ id:id('m'), name:m })) });
+  const strat = mk('Strategy Team', 'teal', 'Build the Q1 marketing plan', ['Aisha Rahman','Marco Silva','Priya Nair']);
+  const crea = mk('Creative Team', 'coral', 'Produce the campaign creatives: ads, visuals and copy', ['Jonah Kim','Leila Haddad','Sam Okafor','Elena Petrova']);
+  const res = mk('Research Team', 'violet', 'Run market, audience and competitor research', ['Daniel Mensah','Fatima Al-Sayed','Ravi Menon']);
+  const levels = [];
+  const lv = (t, order, title, brief, deadline, xp, badge, tasks) => {
+    const o = { id:id('l'), teamId:t.id, order, title, brief, deadline, xp, badge, status:'locked', startedAt:null, approvedAt:null, onTime:null,
+      tasks: tasks.map(x => ({ id:id('k'), text:x, done:false, doneBy:null, doneAt:null })), thread:[] };
+    levels.push(o); return o;
+  };
+  const tick = (l, names, at, upto) => l.tasks.forEach((k, i) => { if (upto == null || i < upto) { k.done = true; k.doneBy = names[i % names.length]; k.doneAt = at - (l.tasks.length - i) * 3 * HOUR; } });
+  const sub = (l, by, at, link, note) => { const v = l.thread.filter(x => x.type === 'submission').length + 1; l.thread.push({ id:id('s'), type:'submission', at, by, version:v, link, fileName:'', fileUrl:'', note }); };
+  const fb = (l, by, at, decision, text) => l.thread.push({ id:id('f'), type:'feedback', at, by, decision, text });
+  const mgr = 'Nadia Farouk';
+
+  // Strategy
+  const s1 = lv(strat, 1, 'Market Position Audit', 'Establish where the brand stands today before we plan anything new.', d(-12), 100, 'Cartographer',
+    ['Map current brand positioning against the top 3 rivals','Pull the last 4 quarters of channel performance','Summarise the SWOT on one page','Interview 3 sales leads about lost deals']);
+  const s2 = lv(strat, 2, 'Goals & KPI Framework', 'Turn the audit into measurable objectives the whole department can steer by.', d(-3), 120, 'Goal Setter',
+    ['Draft 3 SMART objectives for Q1','Define the north-star metric and 5 supporting KPIs','Set baseline values from analytics','Agree targets with the sales lead']);
+  const s3 = lv(strat, 3, 'Channel Mix & Budget', 'Decide where the money goes and how we will know it worked.', h(53), 150, 'Budget Keeper',
+    ['Allocate budget across paid, owned and earned','Model CAC per channel','Build a 70/20/10 test split','Get finance sign-off on spend caps','Write the channel rationale (1 page)']);
+  const s4 = lv(strat, 4, 'Launch Calendar', 'Lay the plan out week by week so every team knows its moment.', d(16), 200, 'Chief Planner',
+    ['Lay out the 12-week campaign calendar','Assign an owner to each launch moment','Flag dependencies on Creative deliverables','Present the plan to leadership']);
+  const S = strat.members.map(m => m.name);
+  s1.status = 'complete'; s1.startedAt = d(-26); tick(s1, S, d(-14)); sub(s1, 'Aisha Rahman', d(-14), 'https://docs.example.com/strategy/position-audit', 'Audit plus SWOT. Sales interviews are summarised on page 4.'); fb(s1, mgr, d(-13), 'approve', 'Clear and well sourced. Approved.'); s1.approvedAt = d(-13); s1.onTime = true;
+  s2.status = 'complete'; s2.startedAt = d(-13); tick(s2, S, d(-6)); sub(s2, 'Marco Silva', d(-6), 'https://docs.example.com/strategy/kpi-framework-v1', 'First pass at objectives and the KPI tree.');
+  fb(s2, mgr, d(-5), 'changes', "Objective 2 isn't measurable yet. Add a baseline and a target date, and cut the KPI list to the five that actually drive the north-star.");
+  s2.thread.push({ id:id('y'), type:'system', at:d(-4.9), by:'Priya Nair', text:'started the revision' });
+  sub(s2, 'Priya Nair', d(-4.5), 'https://docs.example.com/strategy/kpi-framework-v2', 'Tightened objective 2, added baselines, trimmed the KPI list to 5.'); fb(s2, mgr, d(-4), 'approve', 'Much sharper. Approved.'); s2.approvedAt = d(-4); s2.onTime = true;
+  s3.status = 'submitted'; s3.startedAt = d(-4); tick(s3, S, h(-6)); sub(s3, 'Priya Nair', h(-6), 'https://docs.example.com/strategy/channel-budget', 'Budget split and CAC model attached. Finance signed off on the caps on Friday.');
+
+  // Creative
+  const c1 = lv(crea, 1, 'Brand Moodboard', 'Agree the look and voice before anyone opens a design file.', d(-6), 100, 'Tastemaker',
+    ['Collect 30 reference visuals','Define colour and type direction',"Write tone-of-voice do's and don'ts"]);
+  const c2 = lv(crea, 2, 'Hero Ad Concepts', 'Find the big idea the whole campaign will hang on.', h(20), 150, 'Big Idea',
+    ['Develop 3 campaign concepts','Write a headline and body copy for each concept','Produce rough key visuals','Check concepts against brand guidelines']);
+  const c3 = lv(crea, 3, 'Social Ad Set', 'Adapt the winning concept for every social placement.', d(9), 150, 'Scroll Stopper',
+    ['Adapt the winning concept to 1:1, 4:5 and 9:16','Write 5 caption variants','Produce 2 short motion cuts','Run an accessibility check (contrast, captions)']);
+  const c4 = lv(crea, 4, 'Landing Page Creative', 'Give the campaign a page that converts.', d(21), 200, 'Closer',
+    ['Write hero, benefits and FAQ copy','Design desktop and mobile layouts','Prepare A/B headline variants']);
+  const C = crea.members.map(m => m.name);
+  c1.status = 'complete'; c1.startedAt = d(-15); tick(c1, C, d(-8)); sub(c1, 'Leila Haddad', d(-8), 'https://www.figma.com/file/example/moodboard', 'Moodboard with 34 references, plus type and colour direction.'); fb(c1, mgr, d(-7), 'approve', 'Strong direction. The type pairing is spot on.'); c1.approvedAt = d(-7); c1.onTime = true;
+  c2.status = 'feedback'; c2.startedAt = d(-7); tick(c2, C, d(-2)); sub(c2, 'Jonah Kim', d(-2), 'https://www.figma.com/file/example/hero-concepts', 'Three concepts with headlines and rough key visuals.');
+  fb(c2, mgr, h(-3), 'changes', 'Concept B is the winner. Push the headline further, it reads like a feature list right now. The CTA colour also fails contrast on the dark variant.');
+
+  // Research
+  const r1 = lv(res, 1, 'Audience Survey', 'Hear directly from the people we want to reach.', d(-9), 100, 'Listener',
+    ['Draft a 15-question survey','Recruit 200 respondents','Clean and code the open-text answers','Share top-line results']);
+  const r2 = lv(res, 2, 'Competitor Teardown', 'Learn what rivals say, spend and offer, and where the gaps are.', d(-2), 120, 'Spyglass',
+    ["Audit 5 competitors' ads and landing pages",'Compare pricing and offers','Log share of voice from social listening','Summarise the gaps we can own']);
+  const r3 = lv(res, 3, 'Persona Profiles', 'Turn the survey into people the team can design for.', d(10), 150, 'Mind Reader',
+    ['Cluster survey data into segments','Write 3 persona profiles','Validate personas with 5 customer calls']);
+  const r4 = lv(res, 4, 'Insight Report', 'Close the loop: what we learned and what the plan should do about it.', d(24), 200, 'Oracle',
+    ['Synthesise the top 10 insights','Link each insight to a plan decision','Present findings to the department']);
+  const R = res.members.map(m => m.name);
+  r1.status = 'complete'; r1.startedAt = d(-20); tick(r1, R, d(-7.5)); sub(r1, 'Fatima Al-Sayed', d(-7.5), 'https://docs.example.com/research/survey-results', 'Survey results, n = 212. Open-text answers coded into 9 themes.'); fb(r1, mgr, d(-7), 'approve', 'Good sample and clean coding. Approved, though it landed two days after the deadline.'); r1.approvedAt = d(-7); r1.onTime = false;
+  r2.status = 'in_progress'; r2.startedAt = d(-7); tick(r2, R, d(-1), 2);
+
+  const rewards = [
+    { id:id('r'), name:'Team dinner pass', description:'Dinner for each member at a restaurant of the team\'s choice.', milestone:'track', threshold:0 },
+    { id:id('r'), name:'Gift card · $50', description:'A $50 gift card for every member of the team.', milestone:'track', threshold:0 },
+    { id:id('r'), name:'Lunch pass', description:'Lunch on the department for each member.', milestone:'streak', threshold:2 },
+    { id:id('r'), name:'Late-start Friday', description:'Start at 11:00 on a Friday of your choice.', milestone:'xp', threshold:500 }
+  ];
+  const lunch = rewards[2];
+  const unlocks = strat.members.map((m, i) => ({ id:id('u'), rewardId:lunch.id, teamId:strat.id, memberId:m.id, unlockedAt:d(-4), claimedAt: i === 0 ? d(-2) : null }));
+  return { version:1, settings:{ managerName:mgr, managerTitle:'Head of Marketing', streakBonus:25 }, teams:[strat, crea, res], levels, rewards, unlocks };
+}
+/*SEED-END*/
+
+// ---------- state ----------
+let S = null;
+const ui = { role:'manager', tab:'board', teamId:null, levelId:null, modal:null, setupTeamId:null, celebration:null, files:{}, busy:{} };
+const store = { mode:'loading', ref:null, assets:null, writing:false, dirty:false, error:null };
+const LS_STATE = 'qb.state.v1', LS_UI = 'qb.ui.v1', LS_SEEN = 'qb.seen.v1';
+const lsGet = k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const uid = p => p + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const $ = s => document.querySelector(s);
+const clone = o => JSON.parse(JSON.stringify(o));
+
+// ---------- icons ----------
+const ICONS = {
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  flame:'<path d="M12 3c.6 3 4.5 5 4.5 9.5a4.5 4.5 0 0 1-9 0c0-2.3 1.3-3.6 2.3-4.6.1 2 .9 3.2 2 3.4-.6-3.2-.8-5.6.2-8.3z"/>',
+  star:'<path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>',
+  gift:'<rect x="3.5" y="8" width="17" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1.5-3-5-3.5-5-1.2C7 8 9 8 12 8zm0 0c1.5-3 5-3.5 5-1.2C17 8 15 8 12 8z"/>',
+  send:'<path d="M4 12l16-8-6 16-2.5-6.5z"/><path d="M11.5 13.5L20 4"/>',
+  flag:'<path d="M5 21V4h11l-2 4 2 4H5"/>',
+  trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4v3h-4z"/>',
+  link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  chat:'<path d="M20 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>',
+  redo:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  up:'<path d="M12 19V5M6 11l6-6 6 6"/>', down:'<path d="M12 5v14M6 13l6 6 6-6"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  inbox:'<path d="M4 13l2.5-7h11L20 13v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/>',
+  map:'<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  bolt:'<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>'
+};
+const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+
+// ---------- helpers ----------
+const teamColor = t => TEAM_COLORS[t?.color] || t?.color || '#2E7CD6';
+const teamOf = id => S.teams.find(t => t.id === id);
+const levelOf = id => S.levels.find(l => l.id === id);
+const levelsOf = tid => S.levels.filter(l => l.teamId === tid).sort((a, b) => a.order - b.order);
+const memberById = id => { for (const t of S.teams) { const m = t.members.find(x => x.id === id); if (m) return { ...m, team:t }; } return null; };
+const isManager = () => ui.role === 'manager';
+const me = () => isManager() ? null : memberById(ui.role);
+const myName = () => isManager() ? (S.settings.managerName || 'Manager') : (me()?.name || 'Team member');
+const canWork = l => !isManager() && me()?.team.id === l.teamId;
+const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join('');
+const fmtDate = ms => new Date(ms).toLocaleDateString(undefined, { day:'numeric', month:'short' });
+const fmtDT = ms => new Date(ms).toLocaleString(undefined, { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' });
+function fmtDur(ms) {
+  ms = Math.abs(ms);
+  const dd = Math.floor(ms / DAY), hh = Math.floor((ms % DAY) / HOUR), mm = Math.floor((ms % HOUR) / MIN);
+  if (dd > 0) return `${dd}d ${hh}h`;
+  if (hh > 0) return `${hh}h ${mm}m`;
+  return `${mm}m`;
+}
+function ago(ms) {
+  const diff = Date.now() - ms;
+  if (diff < MIN) return 'just now';
+  if (diff < HOUR) return Math.floor(diff / MIN) + 'm ago';
+  if (diff < DAY) return Math.floor(diff / HOUR) + 'h ago';
+  if (diff < 7 * DAY) return Math.floor(diff / DAY) + 'd ago';
+  return fmtDate(ms);
+}
+const toLocalInput = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+function countdown(deadline) {
+  const diff = deadline - Date.now();
+  if (diff < 0) return { cls:'dl-over', text:`Overdue ${fmtDur(diff)}` };
+  if (diff <= DAY) return { cls:'dl-bad', text:`${fmtDur(diff)} left` };
+  if (diff <= 3 * DAY) return { cls:'dl-warn', text:`${fmtDur(diff)} left` };
+  return { cls:'dl-ok', text:`${fmtDur(diff)} left` };
+}
+function deadlineChip(l) {
+  if (l.status === 'complete') {
+    return l.onTime ? `<span class="dl dl-ok">${ic('check')}On time</span>` : `<span class="dl dl-over">${ic('clock')}Finished late</span>`;
+  }
+  if (l.status === 'locked') return `<span class="dl dl-plain">${ic('clock')}Due ${fmtDate(l.deadline)}</span>`;
+  const c = countdown(l.deadline);
+  return `<span class="dl ${c.cls}" data-deadline="${l.deadline}" title="Due ${esc(fmtDT(l.deadline))}">${ic('clock')}<span>${c.text}</span></span>`;
+}
+const statusPill = l => `<span class="pill ${STATUS[l.status].cls}">${STATUS[l.status].label}</span>`;
+const lastOf = (l, type, decision) => [...l.thread].reverse().find(x => x.type === type && (!decision || x.decision === decision));
+
+function teamStats(t) {
+  const ls = levelsOf(t.id);
+  const bonus = Number(S.settings.streakBonus) || 0;
+  let xp = 0, streak = 0, best = 0; const badges = [], earned = {};
+  for (const l of ls) {
+    if (l.status !== 'complete') continue;
+    if (l.onTime) {
+      streak++; best = Math.max(best, streak);
+      const e = (Number(l.xp) || 0) + bonus * (streak - 1);
+      earned[l.id] = { xp:e, bonus:bonus * (streak - 1) };
+      xp += e; badges.push({ name:l.badge || l.title, levelId:l.id });
+    } else { streak = 0; earned[l.id] = { xp:0, bonus:0 }; }
+  }
+  const done = ls.filter(l => l.status === 'complete').length;
+  const current = ls.find(l => l.status !== 'complete') || null;
+  const trackComplete = ls.length > 0 && done === ls.length;
+  const trackOnTime = trackComplete && ls.every(l => l.onTime);
+  return { ls, xp, streak, best, badges, earned, done, total:ls.length, current, trackComplete, trackOnTime };
+}
+
+function normalize(st) {
+  const now = Date.now();
+  for (const t of st.teams) {
+    const ls = st.levels.filter(l => l.teamId === t.id).sort((a, b) => a.order - b.order);
+    ls.forEach((l, i) => { l.order = i + 1; });
+    const idx = ls.findIndex(l => l.status !== 'complete');
+    if (idx === -1) continue;
+    const cur = ls[idx];
+    if (cur.status === 'locked') { cur.status = 'in_progress'; cur.startedAt = now; }
+    for (let i = idx + 1; i < ls.length; i++) if (ls[i].status !== 'complete') ls[i].status = 'locked';
+  }
+  st.levels = st.levels.filter(l => st.teams.some(t => t.id === l.teamId));
+  st.unlocks = st.unlocks.filter(u => st.teams.some(t => t.id === u.teamId) && st.rewards.some(r => r.id === u.rewardId));
+}
+function milestoneMet(r, s) {
+  if (r.milestone === 'track') return s.trackOnTime;
+  if (r.milestone === 'streak') return s.best >= (Number(r.threshold) || 1);
+  if (r.milestone === 'xp') return s.xp >= (Number(r.threshold) || 0);
+  return false;
+}
+function milestoneText(r) {
+  if (r.milestone === 'track') return MILESTONES.track;
+  if (r.milestone === 'streak') return `${MILESTONES.streak} ${r.threshold} levels`;
+  return `${MILESTONES.xp} ${r.threshold}`;
+}
+function syncUnlocks(st) {
+  const fresh = [];
+  const prevS = S; S = st;
+  for (const t of st.teams) {
+    const s = teamStats(t);
+    for (const r of st.rewards) {
+      if (!milestoneMet(r, s)) continue;
+      for (const m of t.members) {
+        if (st.unlocks.some(u => u.rewardId === r.id && u.memberId === m.id)) continue;
+        const u = { id:uid('u'), rewardId:r.id, teamId:t.id, memberId:m.id, unlockedAt:Date.now(), claimedAt:null };
+        st.unlocks.push(u); fresh.push(u);
+      }
+    }
+  }
+  S = prevS;
+  return fresh;
+}
+
+// ---------- persistence ----------
+async function save() {
+  lsSet(LS_STATE, { state:S });
+  if (!store.ref) return;
+  if (store.writing) { store.dirty = true; return; }
+  store.writing = true;
+  try {
+    do { store.dirty = false; await store.ref.set({ state:S, updatedAt:Date.now() }); } while (store.dirty);
+  } catch (e) {
+    toast(e && e.code === 'invalid_argument' ? 'You have view-only access to this board, so that change was not saved.' : 'That change could not be saved. Check your connection and try again.', 'bad');
+  } finally { store.writing = false; }
+}
+function mutate(fn) {
+  if (!S) return null;
+  const res = fn(S);
+  if (res === false) return null;
+  normalize(S);
+  const fresh = syncUnlocks(S);
+  save();
+  render();
+  return { res, fresh };
+}
+
+async function init() {
+  const u0 = lsGet(LS_UI);
+  if (u0) Object.assign(ui, { role:u0.role || 'manager', tab:u0.tab || 'board', teamId:u0.teamId || null });
+  const cached = lsGet(LS_STATE);
+  if (cached && cached.state) { S = cached.state; store.mode = 'cached'; }
+  const hasRuntime = window.claude && typeof window.claude.use === 'function';
+  if (!hasRuntime && !S) { S = buildSample(Date.now()); normalize(S); store.mode = 'local'; }
+  if (!hasRuntime) store.mode = 'local';
+  fixRole(); render();
+  if (!hasRuntime) { checkSeen(); return; }
+  window.claude.use('assets').then(a => { store.assets = a || null; render(); }).catch(() => {});
+  let db = null;
+  try { db = await window.claude.use('db'); } catch { db = null; }
+  if (!db) {
+    store.mode = 'local';
+    if (!S) { S = buildSample(Date.now()); normalize(S); }
+    fixRole(); render(); checkSeen(); return;
+  }
+  store.ref = db.doc('quest/board');
+  store.ref.onSnapshot(snap => {
+    if (snap.metadata.hasPendingWrites && store.dirty) return;
+    if (snap.exists) {
+      const d = snap.data();
+      if (d && d.state) { S = clone(d.state); store.mode = 'live'; lsSet(LS_STATE, { state:S }); }
+    } else if (!snap.metadata.fromCache) { S = null; store.mode = 'empty'; }
+    fixRole(); render(); checkSeen();
+  }, e => {
+    store.error = e && e.code; store.mode = 'offline';
+    if (!S) { S = buildSample(Date.now()); normalize(S); store.mode = 'local'; }
+    render();
+  });
+}
+function fixRole() {
+  if (!S) return;
+  if (ui.role !== 'manager' && !memberById(ui.role)) ui.role = 'manager';
+  if (!ui.teamId || !teamOf(ui.teamId)) ui.teamId = me()?.team.id || S.teams[0]?.id || null;
+  if (!isManager() && (ui.tab === 'review' || ui.tab === 'setup')) ui.tab = 'board';
+  if (ui.levelId && !levelOf(ui.levelId)) ui.levelId = null;
+}
+const saveUi = () => lsSet(LS_UI, { role:ui.role, tab:ui.tab, teamId:ui.teamId });
+
+// ---------- render ----------
+function preserve(fn) {
+  const vals = {}; const ae = document.activeElement; const focusId = ae && ae.id;
+  let sel = null; try { if (ae && 'selectionStart' in ae) sel = [ae.selectionStart, ae.selectionEnd]; } catch {}
+  document.querySelectorAll('input[id],textarea[id],select[id]').forEach(el => {
+    if (el.dataset.norestore != null || el.type === 'file' || el.type === 'checkbox') return;
+    vals[el.id] = el.value;
+  });
+  const dr = document.querySelector('.drawer'); const scr = dr ? dr.scrollTop : null;
+  fn();
+  for (const [k, v] of Object.entries(vals)) { const el = document.getElementById(k); if (el && el.dataset.norestore == null) el.value = v; }
+  const dr2 = document.querySelector('.drawer'); if (dr2 && scr != null) dr2.scrollTop = scr;
+  if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus({ preventScroll:true }); try { if (sel) el.setSelectionRange(sel[0], sel[1]); } catch {} } }
+}
+function render() {
+  preserve(() => {
+    $('#role-slot').innerHTML = S ? roleSelect() : '';
+    $('#tabs').innerHTML = S ? tabsHTML() : '';
+    $('#banner-slot').innerHTML = bannerHTML();
+    $('#main').innerHTML = mainHTML();
+    $('#modal-root').innerHTML = modalHTML();
+  });
+}
+function bannerHTML() {
+  if (store.mode === 'local' && window.claude) return `<div class="banner"><p>Team sync isn't available in this view, so changes are saved in this browser only.</p></div>`;
+  if (store.mode === 'offline') return `<div class="banner"><p>Lost the connection to the shared board. You're seeing the last saved version.</p></div>`;
+  return '';
+}
+function roleSelect() {
+  const opts = [`<optgroup label="Manager"><option value="manager"${isManager() ? ' selected' : ''}>${esc(S.settings.managerName || 'Manager')} · Manager</option></optgroup>`];
+  for (const t of S.teams) {
+    opts.push(`<optgroup label="${esc(t.name)}">` + t.members.map(m => `<option value="${m.id}"${ui.role === m.id ? ' selected' : ''}>${esc(m.name)}</option>`).join('') + '</optgroup>');
+  }
+  return `<label for="role-select">Viewing as</label><select id="role-select" data-norestore>${opts.join('')}</select>`;
+}
+function tabsHTML() {
+  const pending = S.levels.filter(l => l.status === 'submitted').length;
+  const tabs = [['board','Leaderboard'],['track','Team tracks']];
+  if (isManager()) tabs.push(['review', `Review queue${pending ? ` <span class="count">${pending}</span>` : ''}`]);
+  tabs.push(['rewards','Rewards']);
+  if (isManager()) tabs.push(['setup','Setup']);
+  return tabs.map(([k, l]) => `<button class="tab" data-action="tab" data-tab="${k}"${ui.tab === k ? ' aria-current="page"' : ''}>${l}</button>`).join('');
+}
+function mainHTML() {
+  if (!S) {
+    if (store.mode === 'empty') return `<div class="empty">${ic('map')}<h2 class="h2">No quests on the board yet</h2><p class="sub">Load the sample marketing department to explore, or start with an empty board and set up your own teams.</p><div class="btn-row"><button class="btn" data-action="load-sample">Load sample data</button><button class="btn btn-ghost" data-action="start-empty">Start empty</button></div></div>`;
+    return `<p class="loading">Opening the board…</p>`;
+  }
+  if (ui.tab === 'track') return viewTrack();
+  if (ui.tab === 'review' && isManager()) return viewReview();
+  if (ui.tab === 'rewards') return viewRewards();
+  if (ui.tab === 'setup' && isManager()) return viewSetup();
+  return viewBoard();
+}
+
+// ---------- leaderboard ----------
+function viewBoard() {
+  const now = Date.now();
+  const rows = S.teams.map(t => ({ t, s:teamStats(t) })).sort((a, b) => b.s.xp - a.s.xp || b.s.done - a.s.done);
+  const active = S.levels.filter(l => ACTIVE.includes(l.status));
+  const awaiting = S.levels.filter(l => l.status === 'submitted').length;
+  const overdue = active.filter(l => l.deadline < now).length;
+  const soon = active.filter(l => l.deadline >= now && l.deadline - now <= DAY).length;
+  const unl = S.unlocks.length, clm = S.unlocks.filter(u => u.claimedAt).length;
+  const who = me();
+  const greet = isManager() ? `Here's where every team stands, ${esc((S.settings.managerName || '').split(' ')[0] || 'manager')}.`
+    : `You're on the ${esc(who.team.name)}. Finish levels before their deadline to earn XP, badges and rewards.`;
+  return `
+  <section class="sec-head"><div><p class="eyebrow">Leaderboard</p><h2 class="h2">Season standings</h2><p class="sub">${greet}</p></div></section>
+  <div class="strip">
+    <div><span class="n violet mono">${awaiting}</span><span class="l">Awaiting review</span></div>
+    <div><span class="n bad mono">${soon}</span><span class="l">Due within 24 hours</span></div>
+    <div><span class="n warn mono">${overdue}</span><span class="l">Overdue levels</span></div>
+    <div><span class="n gold mono">${unl}</span><span class="l">Rewards unlocked · ${clm} claimed</span></div>
+  </div>
+  <section class="teams">${rows.map((r, i) => teamCard(r.t, r.s, i + 1)).join('') || `<div class="empty">${ic('flag')}<p>No teams yet. Add one in Setup.</p></div>`}</section>
+  <section class="two">
+    <div class="panel"><h3>Recent activity</h3>${activityHTML()}</div>
+    <div class="panel"><h3>How a level is won</h3>
+      <ul class="rules">
+        <li><span class="k">1</span><span>Tick off every task, then submit a link or file with a short note.</span></li>
+        <li><span class="k">2</span><span>The manager approves or asks for changes. Revise and resubmit as often as needed.</span></li>
+        <li><span class="k">3</span><span>A level is on time only if it's <b>approved</b> before the deadline. That earns its XP and badge, plus +${Number(S.settings.streakBonus) || 0} XP for each level already in your streak.</span></li>
+        <li><span class="k">4</span><span>Finish the whole track on time and every member unlocks the track rewards.</span></li>
+      </ul>
+      <div class="legend">${LIFECYCLE.map(k => `<span class="pill ${STATUS[k].cls}">${STATUS[k].label}</span>`).join('')}</div>
+    </div>
+  </section>`;
+}
+function teamCard(t, s, rank) {
+  const col = teamColor(t);
+  const segs = s.ls.map(l => `<span class="seg ${l.status === 'complete' ? (l.onTime ? 'done' : 'late') : (ACTIVE.includes(l.status) ? 'active' : '')}" title="Level ${l.order}: ${esc(l.title)} · ${STATUS[l.status].label}"></span>`).join('');
+  const cur = s.current;
+  const curHTML = cur ? `<button class="current" data-action="open-level" data-id="${cur.id}">
+      <span class="t"><small>Level ${cur.order} of ${s.total}</small>${esc(cur.title)}</span>
+      <span class="m">${statusPill(cur)}${deadlineChip(cur)}<span class="hint">${cur.tasks.filter(k => k.done).length}/${cur.tasks.length} tasks</span></span>
+    </button>`
+    : s.total ? `<div class="current"><span class="t"><small>Track complete</small>${s.trackOnTime ? 'Every level approved on time' : 'All levels approved'}</span></div>` : `<div class="current"><span class="t"><small>No levels yet</small>The manager hasn't set up this track.</span></div>`;
+  return `<article class="team-card" style="--team:${col}">
+    <div class="band"></div>
+    <div class="tc-body">
+      <div class="tc-head"><span class="rank mono">${rank}</span><div><h3>${esc(t.name)}</h3><p>${esc(t.objective)}</p></div></div>
+      <div class="stats">
+        <div class="stat"><b>${s.xp}</b><span>XP</span></div>
+        <div class="stat"><b>${ic('flame')}${s.streak}</b><span>On-time streak</span></div>
+        <div class="stat"><b>${s.done}/${s.total}</b><span>Levels done</span></div>
+      </div>
+      <div><div class="segbar">${segs}</div></div>
+      ${curHTML}
+      <div class="badges">${s.badges.length ? s.badges.map(b => `<span class="badge-chip"><span class="medal">${ic('star')}</span>${esc(b.name)}</span>`).join('') : '<span class="none">No badges yet</span>'}</div>
+      <div class="people"><div class="avs">${t.members.slice(0, 5).map(m => `<span class="av" title="${esc(m.name)}">${esc(initials(m.name))}</span>`).join('')}</div>${t.members.length} members
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" data-action="goto-track" data-id="${t.id}">${ic('map')}View track</button></div>
+    </div>
+  </article>`;
+}
+function activityHTML() {
+  const items = [];
+  for (const l of S.levels) {
+    const t = teamOf(l.teamId); if (!t) continue;
+    for (const x of l.thread) {
+      let what;
+      if (x.type === 'submission') what = `<b>${esc(x.by)}</b> submitted v${x.version} of ${esc(l.title)}`;
+      else if (x.type === 'feedback') what = x.decision === 'approve' ? `<b>${esc(x.by)}</b> approved ${esc(l.title)}${l.onTime === false ? ' (after the deadline)' : ''}` : `<b>${esc(x.by)}</b> asked for changes on ${esc(l.title)}`;
+      else what = `<b>${esc(x.by)}</b> ${esc(x.text)} on ${esc(l.title)}`;
+      items.push({ at:x.at, html:what, col:teamColor(t) });
+    }
+  }
+  for (const u of S.unlocks) {
+    const r = S.rewards.find(x => x.id === u.rewardId), m = memberById(u.memberId);
+    if (r && m && u.claimedAt) items.push({ at:u.claimedAt, html:`<b>${esc(m.name)}</b> received ${esc(r.name)}`, col:teamColor(m.team) });
+  }
+  items.sort((a, b) => b.at - a.at);
+  if (!items.length) return '<p class="empty-t">Nothing has happened yet.</p>';
+  return `<ul class="feed">${items.slice(0, 8).map(i => `<li style="--team:${i.col}"><span class="dot"></span><span class="what">${i.html}</span><time>${ago(i.at)}</time></li>`).join('')}</ul>`;
+}
+
+// ---------- track map ----------
+function viewTrack() {
+  const t = teamOf(ui.teamId) || S.teams[0];
+  if (!t) return `<div class="empty">${ic('flag')}<p>No teams yet.</p></div>`;
+  const s = teamStats(t), col = teamColor(t);
+  const chips = S.teams.map(x => `<button class="chip" style="--team:${teamColor(x)}" data-action="pick-team" data-id="${x.id}" aria-pressed="${x.id === t.id}"><span class="sw"></span>${esc(x.name)}</button>`).join('');
+  const rail = window.innerWidth <= 520 ? 92 : 116, rh = window.innerWidth <= 520 ? 156 : 150;
+  const xs = [rail * 0.3, rail * 0.72];
+  const pts = [...s.ls.map((l, i) => ({ x:xs[i % 2], y:rh * i + rh / 2 })), { x:xs[s.ls.length % 2], y:rh * s.ls.length + rh / 2 }];
+  let paths = '';
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], my = (a.y + b.y) / 2;
+    const done = s.ls[i] && s.ls[i].status === 'complete';
+    paths += `<path d="M${a.x} ${a.y} C${a.x} ${my} ${b.x} ${my} ${b.x} ${b.y}" fill="none" stroke="${done ? col : 'var(--line-2)'}" stroke-width="${done ? 5 : 3}" stroke-linecap="round" ${done ? '' : 'stroke-dasharray="2 9"'}/>`;
+  }
+  const trackRewards = S.rewards.filter(r => r.milestone === 'track');
+  const rows = s.ls.map((l, i) => {
+    const cls = l.status === 'complete' ? `done${l.onTime ? '' : ' late'}` : ACTIVE.includes(l.status) ? 'active' : '';
+    const inner = l.status === 'complete' ? ic('check') : l.status === 'locked' ? ic('lock') : l.order;
+    const doneN = l.tasks.filter(k => k.done).length;
+    const earned = s.earned[l.id];
+    const meta = l.status === 'complete'
+      ? (l.onTime ? `<span class="badge-chip"><span class="medal">${ic('star')}</span>${esc(l.badge || 'Badge')}</span><span class="mono">+${earned ? earned.xp : 0} XP</span>` : `<span>Approved ${fmtDate(l.approvedAt)} · no on-time perks</span>`)
+      : l.status === 'locked' ? `<span>${l.tasks.length} tasks · ${l.xp} XP</span>`
+      : `<span class="mini-prog"><i style="width:${l.tasks.length ? doneN / l.tasks.length * 100 : 0}%"></i></span><span class="mono">${doneN}/${l.tasks.length}</span>`;
+    return `<div class="map-row">
+      <button class="node ${cls}" style="left:${pts[i].x - (rail <= 92 ? 24 : 28)}px" data-action="open-level" data-id="${l.id}" aria-label="Open level ${l.order}: ${esc(l.title)}">${inner}</button>
+      <span></span>
+      <button class="lvl-card ${l.status === 'locked' ? 'locked' : ''}" data-action="open-level" data-id="${l.id}">
+        <span class="lc-top"><span class="lc-num">Level ${l.order}</span>${statusPill(l)}</span>
+        <span class="lc-title">${esc(l.title)}</span>
+        <span class="lc-meta">${deadlineChip(l)}${meta}</span>
+      </button>
+    </div>`;
+  }).join('');
+  const fp = pts[pts.length - 1];
+  const finish = `<div class="map-row">
+      <span class="node finish ${s.trackOnTime ? 'won' : ''}" style="left:${fp.x - (rail <= 92 ? 24 : 28)}px">${ic('trophy')}</span><span></span>
+      <div class="lvl-card finish-card">
+        <span class="lc-top"><span class="lc-num">Finish line</span>${s.trackOnTime ? '<span class="pill st-done">Unlocked</span>' : s.trackComplete ? '<span class="pill st-locked">Missed</span>' : ''}</span>
+        <span class="lc-title">${trackRewards.length ? esc(trackRewards.map(r => r.name).join(' + ')) : 'Track complete'}</span>
+        <span class="lc-meta"><span>${trackRewards.length ? 'For every member, when all levels are approved on time.' : 'Add track rewards in Setup.'}</span></span>
+      </div></div>`;
+  const myTeam = me()?.team.id === t.id;
+  return `
+  <section class="sec-head"><div><p class="eyebrow">Team tracks</p><h2 class="h2">Level map</h2></div><div class="chips">${chips}</div></section>
+  <section class="track-head" style="--team:${col}">
+    <div><p class="eyebrow">${myTeam ? 'Your team' : 'Objective track'}</p><h2>${esc(t.name)}</h2><p class="sub">${esc(t.objective)}</p></div>
+    <div class="stats">
+      <div class="stat"><b>${s.xp}</b><span>XP</span></div>
+      <div class="stat"><b>${ic('flame')}${s.streak}</b><span>Streak</span></div>
+      <div class="stat"><b>${s.done}/${s.total}</b><span>Levels</span></div>
+    </div>
+  </section>
+  ${s.ls.length ? `<section class="map" style="--team:${col};--rail:${rail}px;--rh:${rh}px">
+    <svg class="path" width="${rail}" height="${rh * pts.length}" viewBox="0 0 ${rail} ${rh * pts.length}" aria-hidden="true">${paths}</svg>
+    ${rows}${finish}
+  </section>` : `<div class="empty">${ic('map')}<p>This track has no levels yet.${isManager() ? ' Add them in Setup.' : ''}</p></div>`}`;
+}
+
+// ---------- level drawer ----------
+function levelDrawer(l) {
+  const t = teamOf(l.teamId), col = teamColor(t), s = teamStats(t);
+  const doneN = l.tasks.filter(k => k.done).length, all = l.tasks.length > 0 && doneN === l.tasks.length;
+  const work = canWork(l), editable = work && (l.status === 'in_progress' || l.status === 'revision');
+  const curIdx = LIFECYCLE.indexOf(l.status);
+  const visited = new Set([...l.thread.map(x => x.type === 'submission' ? 'submitted' : x.type === 'feedback' ? (x.decision === 'approve' ? 'complete' : 'feedback') : 'revision'), 'locked', l.status === 'locked' ? null : 'in_progress']);
+  const steps = LIFECYCLE.map((k, i) => `<div class="step ${k === l.status ? 'now' : (visited.has(k) || i < curIdx ? 'past' : '')}"><i></i><span>${STATUS[k].label}</span></div>`).join('');
+  const streakNext = s.streak; const bonus = Number(S.settings.streakBonus) || 0;
+  const prev = levelsOf(l.teamId).find(x => x.order === l.order - 1);
+
+  let action = '';
+  if (l.status === 'locked') {
+    action = `<div class="note-box info">${ic('lock')}<span>Unlocks automatically when Level ${l.order - 1}${prev ? ` · ${esc(prev.title)}` : ''} is approved.</span></div>`;
+  } else if (l.status === 'in_progress' || l.status === 'revision') {
+    if (work) action = submitForm(l, all, doneN);
+    else action = `<div class="note-box info"><span>${l.status === 'revision' ? `${esc(t.name)} is revising based on your feedback.` : `${esc(t.name)} is working through this level.`} ${doneN}/${l.tasks.length} tasks done.</span></div>`;
+  } else if (l.status === 'submitted') {
+    action = isManager() ? `<div class="card"><h3>Review this submission</h3>${reviewForm(l)}</div>` : `<div class="note-box info"><b>Submitted for review</b><span>${esc(S.settings.managerName || 'The manager')} will approve it or send feedback. The deadline still applies until it's approved.</span></div>`;
+  } else if (l.status === 'feedback') {
+    const f = lastOf(l, 'feedback', 'changes');
+    action = `<div class="note-box fb"><b>Changes requested by ${esc(f ? f.by : 'the manager')}</b><span>${esc(f ? f.text : '')}</span>${work ? `<div class="btn-row"><button class="btn" data-action="start-revision" data-id="${l.id}">${ic('redo')}Start revision</button></div>` : `<span class="hint">Waiting for the team to start their revision.</span>`}</div>`;
+  } else if (l.status === 'complete') {
+    const e = s.earned[l.id];
+    action = l.onTime
+      ? `<div class="note-box ok"><b>Approved on time · ${fmtDT(l.approvedAt)}</b><span>Earned ${e ? e.xp : 0} XP${e && e.bonus ? ` (including +${e.bonus} streak bonus)` : ''} and the <b>${esc(l.badge || 'level')}</b> badge.</span></div>`
+      : `<div class="note-box late"><b>Approved after the deadline · ${fmtDT(l.approvedAt)}</b><span>The level counts as complete and the next one is unlocked, but it earns no XP, badge or streak.</span></div>`;
+  }
+
+  const thread = [...l.thread].sort((a, b) => b.at - a.at).map(x => {
+    if (x.type === 'submission') return `<li><span class="t-ic sub">${ic('send')}</span><div class="t-body"><span class="t-meta"><b>${esc(x.by)}</b> submitted v${x.version} · ${fmtDT(x.at)}</span>${x.note ? `<p class="t-text">${esc(x.note)}</p>` : ''}<div class="t-links">${x.link ? `<a class="t-link" href="${esc(safeUrl(x.link))}" target="_blank" rel="noopener">${ic('link')}${esc(shortUrl(x.link))}</a>` : ''}${x.fileUrl ? `<a class="t-link" href="${esc(safeUrl(x.fileUrl))}" target="_blank" rel="noopener">${ic('file')}${esc(x.fileName || 'Attachment')}</a>` : ''}</div></div></li>`;
+    if (x.type === 'feedback') return `<li><span class="t-ic ${x.decision === 'approve' ? 'approve' : 'changes'}">${ic(x.decision === 'approve' ? 'check' : 'chat')}</span><div class="t-body"><span class="t-meta"><b>${esc(x.by)}</b> ${x.decision === 'approve' ? 'approved' : 'requested changes'} · ${fmtDT(x.at)}</span><p class="t-text">${esc(x.text)}</p></div></li>`;
+    return `<li><span class="t-ic sys">${ic('redo')}</span><div class="t-body"><span class="t-meta"><b>${esc(x.by)}</b> ${esc(x.text)} · ${fmtDT(x.at)}</span></div></li>`;
+  }).join('');
+
+  return `<div class="scrim" data-action="close-scrim"><aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(l.title)}" style="--team:${col}">
+    <div class="dr-head">
+      <div class="dr-top"><div><p class="eyebrow">${esc(t.name)} · Level ${l.order}</p><h2>${esc(l.title)}</h2></div><button class="close" data-action="close" aria-label="Close">${ic('x')}</button></div>
+      <div class="dr-meta">${statusPill(l)}${deadlineChip(l)}<span class="hint mono">Due ${esc(fmtDT(l.deadline))}</span></div>
+      <p class="worth">${ic('star')}<span>On time: <b>${l.xp} XP</b>${l.status !== 'complete' && streakNext && bonus ? ` + <b>${bonus * streakNext} streak bonus</b>` : ''} and the <b>${esc(l.badge || 'level')}</b> badge</span></p>
+    </div>
+    <div class="dr-body">
+      <div class="steps" aria-label="Level progress">${steps}</div>
+      ${l.brief ? `<p class="brief">${esc(l.brief)}</p>` : ''}
+      <div class="card"><h3>Tasks <span class="mono">${doneN}/${l.tasks.length}</span></h3>
+        <div class="bar"><i style="width:${l.tasks.length ? doneN / l.tasks.length * 100 : 0}%"></i></div>
+        <ul class="tasks">${l.tasks.map(k => `<li class="task ${k.done ? 'done' : ''}"><input type="checkbox" id="task-${k.id}" data-action="toggle-task" data-level="${l.id}" data-id="${k.id}" ${k.done ? 'checked' : ''} ${editable ? '' : 'disabled'}><label for="task-${k.id}">${esc(k.text)}${k.done && k.doneBy ? `<small>Done by ${esc(k.doneBy)}</small>` : ''}</label></li>`).join('') || '<li class="empty-t">No tasks in this level yet.</li>'}</ul>
+        ${!work && !isManager() && ACTIVE.includes(l.status) ? `<p class="hint">Only members of ${esc(t.name)} can tick these tasks.</p>` : ''}
+      </div>
+      ${action}
+      <div class="card"><h3>Submissions &amp; feedback</h3>${thread ? `<ul class="thread">${thread}</ul>` : '<p class="empty-t">No submissions yet.</p>'}</div>
+    </div>
+  </aside></div>`;
+}
+function safeUrl(u) { try { const x = new URL(u, location.href); return /^(https?:|blob:)$/.test(x.protocol) || x.protocol === 'https:' ? x.href : '#'; } catch { return '#'; } }
+function shortUrl(u) { try { const x = new URL(u); return (x.host + x.pathname).replace(/\/$/, '').slice(0, 48); } catch { return u.slice(0, 48); } }
+function submitForm(l, all, doneN) {
+  const ver = l.thread.filter(x => x.type === 'submission').length + 1;
+  const file = ui.files[l.id];
+  const busy = ui.busy[l.id];
+  return `<div class="card"><h3>${l.status === 'revision' ? `Resubmit · version ${ver}` : 'Submit your work'}</h3>
+    <div class="field"><label for="sub-link-${l.id}">Link to the work</label><input type="url" id="sub-link-${l.id}" placeholder="https://drive.google.com/…"></div>
+    ${store.assets ? `<div class="field"><span class="lbl">Or attach a file</span><div class="file-drop"><input type="file" id="sub-file-${l.id}" data-action="pick-file" data-id="${l.id}" aria-label="Attach a file">${file ? `<span>${ic('file')} ${esc(file.name)}</span>` : ''}</div></div>` : ''}
+    <div class="field"><label for="sub-note-${l.id}">Note for the reviewer</label><textarea id="sub-note-${l.id}" rows="3" placeholder="${l.status === 'revision' ? 'What did you change based on the feedback?' : 'What should the reviewer look at first?'}"></textarea></div>
+    <div class="btn-row"><button class="btn" data-action="submit-level" data-id="${l.id}" ${all && !busy ? '' : 'disabled'}>${ic('send')}${busy ? 'Uploading…' : l.status === 'revision' ? 'Resubmit for review' : 'Submit for review'}</button>
+    ${all ? '' : `<span class="hint warn">Tick all ${l.tasks.length} tasks to submit (${l.tasks.length - doneN} left).</span>`}</div>
+  </div>`;
+}
+function reviewForm(l) {
+  const late = Date.now() > l.deadline;
+  return `<div class="field"><label for="fb-${l.id}">Feedback for the team</label><textarea id="fb-${l.id}" rows="3" placeholder="What works, and what needs to change?"></textarea></div>
+    <div class="btn-row"><button class="btn btn-ok" data-action="approve" data-id="${l.id}">${ic('check')}Approve level</button><button class="btn btn-ghost" data-action="request-changes" data-id="${l.id}">${ic('chat')}Request changes</button></div>
+    <p class="hint ${late ? 'warn' : ''}">${late ? 'The deadline has passed. Approving now completes the level with no on-time XP or badge.' : `Approving now counts as on time (${fmtDur(l.deadline - Date.now())} before the deadline).`}</p>`;
+}
+
+// ---------- review queue ----------
+function viewReview() {
+  const subs = S.levels.filter(l => l.status === 'submitted' && teamOf(l.teamId)).sort((a, b) => a.deadline - b.deadline);
+  const waiting = S.levels.filter(l => (l.status === 'feedback' || l.status === 'revision') && teamOf(l.teamId));
+  const cards = subs.map(l => {
+    const t = teamOf(l.teamId), x = lastOf(l, 'submission');
+    return `<article class="q-card" style="--team:${teamColor(t)}"><div class="band"></div><div class="q-body">
+      <div class="q-head"><div><small>${esc(t.name)} · Level ${l.order}</small><h3>${esc(l.title)}</h3></div>${deadlineChip(l)}</div>
+      ${x ? `<div class="note-box info"><span class="t-meta"><b>${esc(x.by)}</b> submitted v${x.version} · ${ago(x.at)}</span>${x.note ? `<span>${esc(x.note)}</span>` : ''}<div class="t-links">${x.link ? `<a class="t-link" href="${esc(safeUrl(x.link))}" target="_blank" rel="noopener">${ic('link')}${esc(shortUrl(x.link))}</a>` : ''}${x.fileUrl ? `<a class="t-link" href="${esc(safeUrl(x.fileUrl))}" target="_blank" rel="noopener">${ic('file')}${esc(x.fileName || 'Attachment')}</a>` : ''}</div></div>` : ''}
+      ${reviewForm(l)}
+      <button class="btn btn-ghost btn-sm" style="align-self:flex-start" data-action="open-level" data-id="${l.id}">Open full level</button>
+    </div></article>`;
+  }).join('');
+  return `<section class="sec-head"><div><p class="eyebrow">Manager</p><h2 class="h2">Review queue</h2><p class="sub">Submissions waiting for your decision, soonest deadline first. A level only counts as on time once you approve it.</p></div></section>
+  ${subs.length ? `<section class="queue">${cards}</section>` : `<div class="empty">${ic('inbox')}<p>Nothing waiting for review. You're all caught up.</p></div>`}
+  ${waiting.length ? `<section style="display:flex;flex-direction:column;gap:10px"><h3 class="eyebrow">Back with the team</h3><ul class="waiting">${waiting.map(l => { const t = teamOf(l.teamId); return `<li style="--team:${teamColor(t)}"><span class="who"><span class="sw"></span>${esc(t.name)} · ${esc(l.title)}</span><span class="btn-row">${statusPill(l)}${deadlineChip(l)}<button class="btn btn-ghost btn-sm" data-action="open-level" data-id="${l.id}">Open</button></span></li>`; }).join('')}</ul></section>` : ''}`;
+}
+
+// ---------- rewards ----------
+function viewRewards() {
+  const stats = Object.fromEntries(S.teams.map(t => [t.id, teamStats(t)]));
+  const cat = S.rewards.map(r => {
+    const tags = S.teams.map(t => { const on = S.unlocks.some(u => u.rewardId === r.id && u.teamId === t.id); return `<span class="tag ${on ? 'on' : ''}" style="--team:${teamColor(t)}"><span class="sw"></span>${esc(t.name.replace(/ Team$/, ''))}${on ? ' · unlocked' : ''}</span>`; }).join('');
+    return `<article class="rw"><span class="rw-ic">${ic(r.milestone === 'track' ? 'trophy' : r.milestone === 'streak' ? 'flame' : 'gift')}</span><h3>${esc(r.name)}</h3><p>${esc(r.description)}</p><span class="ms">${esc(milestoneText(r))}</span><div class="rw-teams">${tags}</div></article>`;
+  }).join('');
+  let list = S.unlocks.slice();
+  const mine = me();
+  if (mine) list = list.filter(u => u.teamId === mine.team.id);
+  list.sort((a, b) => (a.claimedAt ? 1 : 0) - (b.claimedAt ? 1 : 0) || b.unlockedAt - a.unlockedAt);
+  const rows = list.map(u => {
+    const r = S.rewards.find(x => x.id === u.rewardId), m = memberById(u.memberId); if (!r || !m) return '';
+    const isMe = mine && mine.id === m.id;
+    return `<tr style="--team:${teamColor(m.team)}"><td><span class="who"><span class="av">${esc(initials(m.name))}</span>${esc(m.name)}${isMe ? ' (you)' : ''}</span></td><td>${esc(m.team.name)}</td><td>${esc(r.name)}</td><td class="mono">${fmtDate(u.unlockedAt)}</td>
+      <td><span class="claim"><span class="claim-pill unl">Unlocked</span><span class="${u.claimedAt ? 'on' : 'off'}">→</span><span class="claim-pill ${u.claimedAt ? 'clm' : ''}" style="${u.claimedAt ? '' : 'color:var(--ink-3)'}">${u.claimedAt ? `Claimed ${fmtDate(u.claimedAt)}` : 'Not handed out'}</span></span></td>
+      <td>${isManager() ? (u.claimedAt ? `<button class="btn btn-ghost btn-sm" data-action="unclaim" data-id="${u.id}">Undo</button>` : `<button class="btn btn-sm" data-action="claim" data-id="${u.id}">${ic('gift')}Mark claimed</button>`) : ''}</td></tr>`;
+  }).join('');
+  const progress = S.teams.map(t => { const s = stats[t.id]; return `<span class="tag on" style="--team:${teamColor(t)}"><span class="sw"></span>${esc(t.name)} · ${s.xp} XP · best streak ${s.best}</span>`; }).join('');
+  return `<section class="sec-head"><div><p class="eyebrow">Rewards</p><h2 class="h2">Reward catalogue</h2><p class="sub">Real perks, unlocked for every member of a team when it hits the milestone.${isManager() ? ' Edit the catalogue in Setup.' : ''}</p></div><div class="chips">${progress}</div></section>
+  <section class="catalogue">${cat || `<div class="empty">${ic('gift')}<p>No rewards defined yet.</p></div>`}</section>
+  <section class="sec-head"><div><p class="eyebrow">${mine ? esc(mine.team.name) : 'All teams'}</p><h2 class="h2" style="font-size:18px">Unlocked rewards</h2><p class="sub">${isManager() ? 'Mark each reward claimed once you have handed it out.' : 'Your manager marks a reward claimed once it has been handed out.'}</p></div></section>
+  ${rows ? `<div class="table-wrap"><table><thead><tr><th>Member</th><th>Team</th><th>Reward</th><th>Unlocked</th><th>Status</th><th><span class="sr">Action</span></th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty">${ic('gift')}<p>No rewards unlocked yet. Finish levels on time to get there.</p></div>`}`;
+}
+
+// ---------- setup ----------
+function viewSetup() {
+  const t = teamOf(ui.setupTeamId) || S.teams[0];
+  if (t) ui.setupTeamId = t.id;
+  const teams = S.teams.map(x => `<li style="--team:${teamColor(x)}"><span class="sw"></span><span class="nm">${esc(x.name)}<small>${x.members.length} members · ${levelsOf(x.id).length} levels</small></span><span class="acts"><button class="icon-btn" data-action="edit-team" data-id="${x.id}" aria-label="Edit ${esc(x.name)}">${ic('edit')}</button></span></li>`).join('');
+  const ls = t ? levelsOf(t.id) : [];
+  const levels = ls.map((l, i) => `<li style="--team:${teamColor(t)}"><span class="num">${l.order}</span><span class="nm">${esc(l.title)}<small>Due ${esc(fmtDT(l.deadline))} · ${l.tasks.length} tasks · ${l.xp} XP · ${STATUS[l.status].label}</small></span><span class="acts"><button class="icon-btn" data-action="move-level" data-dir="-1" data-id="${l.id}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${ic('up')}</button><button class="icon-btn" data-action="move-level" data-dir="1" data-id="${l.id}" ${i === ls.length - 1 ? 'disabled' : ''} aria-label="Move down">${ic('down')}</button><button class="icon-btn" data-action="edit-level" data-id="${l.id}" aria-label="Edit ${esc(l.title)}">${ic('edit')}</button></span></li>`).join('');
+  const rewards = S.rewards.map(r => `<li style="--team:var(--gold)"><span class="sw"></span><span class="nm">${esc(r.name)}<small>${esc(milestoneText(r))}</small></span><span class="acts"><button class="icon-btn" data-action="edit-reward" data-id="${r.id}" aria-label="Edit ${esc(r.name)}">${ic('edit')}</button></span></li>`).join('');
+  return `<section class="sec-head"><div><p class="eyebrow">Manager</p><h2 class="h2">Setup</h2><p class="sub">Teams, their levels and tasks, deadlines, and the reward catalogue. Changes reach everyone on the board straight away.</p></div></section>
+  <section class="setup">
+    <div class="panel"><div class="sec-head"><h3>Teams</h3><button class="btn btn-sm" data-action="new-team">${ic('plus')}New team</button></div><ul class="rowlist">${teams || '<li><span></span><span class="nm">No teams yet</span><span></span></li>'}</ul></div>
+    <div class="panel"><div class="sec-head"><h3>Reward catalogue</h3><button class="btn btn-sm" data-action="new-reward">${ic('plus')}New reward</button></div><ul class="rowlist">${rewards || '<li><span></span><span class="nm">No rewards yet</span><span></span></li>'}</ul></div>
+    <div class="panel" style="grid-column:1/-1"><div class="sec-head"><h3>Levels${t ? ` · ${esc(t.name)}` : ''}</h3>${t ? `<button class="btn btn-sm" data-action="new-level">${ic('plus')}New level</button>` : ''}</div>
+      <div class="chips">${S.teams.map(x => `<button class="chip" style="--team:${teamColor(x)}" data-action="setup-team" data-id="${x.id}" aria-pressed="${t && x.id === t.id}"><span class="sw"></span>${esc(x.name)}</button>`).join('')}</div>
+      <ul class="rowlist">${levels || '<li><span></span><span class="nm">No levels yet</span><span></span></li>'}</ul>
+      <p class="hint">Teams play levels top to bottom. Moving or adding a level re-locks anything after the team's current level.</p></div>
+    <div class="panel"><h3>Game rules</h3>
+      <div class="field-row"><div class="field"><label for="set-mgr">Manager name</label><input type="text" id="set-mgr" value="${esc(S.settings.managerName)}"></div><div class="field"><label for="set-title">Manager title</label><input type="text" id="set-title" value="${esc(S.settings.managerTitle || '')}"></div></div>
+      <div class="field"><label for="set-bonus">Streak bonus (XP per level already in the streak)</label><input type="number" id="set-bonus" min="0" step="5" value="${Number(S.settings.streakBonus) || 0}"></div>
+      <div class="btn-row"><button class="btn btn-sm" data-action="save-settings">Save rules</button></div></div>
+    <div class="panel"><h3>Board data</h3><p class="sub">Reset the board to the sample marketing department, or clear it to start fresh. Both affect everyone.</p>
+      <div class="btn-row"><button class="btn btn-danger btn-sm" data-action="reset-sample" data-confirm>Reset to sample data</button><button class="btn btn-danger btn-sm" data-action="clear-board" data-confirm>Clear the board</button></div></div>
+  </section>`;
+}
+
+// ---------- modals ----------
+function modalHTML() {
+  if (ui.celebration) return celebrationHTML();
+  if (ui.levelId) { const l = levelOf(ui.levelId); if (l) return levelDrawer(l); }
+  if (!ui.modal) return '';
+  const m = ui.modal;
+  if (m.kind === 'team') return teamForm(m.id ? teamOf(m.id) : null);
+  if (m.kind === 'level') return levelForm(m.id ? levelOf(m.id) : null);
+  if (m.kind === 'reward') return rewardForm(m.id ? S.rewards.find(r => r.id === m.id) : null);
+  return '';
+}
+const shell = (title, body, foot) => `<div class="scrim center" data-action="close-scrim"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="modal-head"><h2>${esc(title)}</h2><button class="close" data-action="close" aria-label="Close">${ic('x')}</button></div><div class="modal-body">${body}</div><div class="modal-foot">${foot}</div></div></div>`;
+function teamForm(t) {
+  const colors = Object.keys(TEAM_COLORS).map(k => `<option value="${k}"${(t ? t.color : 'blue') === k ? ' selected' : ''}>${k[0].toUpperCase() + k.slice(1)}</option>`).join('');
+  return shell(t ? 'Edit team' : 'New team', `
+    <div class="field"><label for="tf-name">Team name</label><input type="text" id="tf-name" value="${esc(t ? t.name : '')}" placeholder="e.g. Social Team"></div>
+    <div class="field"><label for="tf-obj">Objective track</label><input type="text" id="tf-obj" value="${esc(t ? t.objective : '')}" placeholder="What this team delivers"></div>
+    <div class="field"><label for="tf-color">Colour</label><select id="tf-color">${colors}</select></div>
+    <div class="field"><label for="tf-members">Members, one per line</label><textarea id="tf-members" rows="5">${esc(t ? t.members.map(m => m.name).join('\n') : '')}</textarea></div>`,
+    `${t ? `<button class="btn btn-danger btn-sm" data-action="delete-team" data-id="${t.id}" data-confirm>Delete team</button>` : '<span></span>'}<div class="btn-row"><button class="btn btn-ghost" data-action="close">Cancel</button><button class="btn" data-action="save-team" data-id="${t ? t.id : ''}">Save team</button></div>`);
+}
+function levelForm(l) {
+  const t = l ? teamOf(l.teamId) : teamOf(ui.setupTeamId);
+  return shell(l ? `Edit level ${l.order}` : `New level · ${t ? t.name : ''}`, `
+    <div class="field"><label for="lf-title">Level name</label><input type="text" id="lf-title" value="${esc(l ? l.title : '')}" placeholder="e.g. Email Nurture Sequence"></div>
+    <div class="field"><label for="lf-brief">Brief</label><input type="text" id="lf-brief" value="${esc(l ? l.brief : '')}" placeholder="One line on why this level matters"></div>
+    <div class="field-row"><div class="field"><label for="lf-deadline">Deadline</label><input type="datetime-local" id="lf-deadline" value="${toLocalInput(l ? l.deadline : Date.now() + 7 * DAY)}"></div>
+    <div class="field"><label for="lf-xp">XP for finishing on time</label><input type="number" id="lf-xp" min="0" step="10" value="${l ? l.xp : 100}"></div></div>
+    <div class="field"><label for="lf-badge">Badge name</label><input type="text" id="lf-badge" value="${esc(l ? l.badge : '')}" placeholder="e.g. Inbox Hero"></div>
+    <div class="field"><label for="lf-tasks">Tasks, one per line</label><textarea id="lf-tasks" rows="6">${esc(l ? l.tasks.map(k => k.text).join('\n') : '')}</textarea><span class="hint">Ticked tasks stay ticked if you keep their wording.</span></div>`,
+    `${l ? `<button class="btn btn-danger btn-sm" data-action="delete-level" data-id="${l.id}" data-confirm>Delete level</button>` : '<span></span>'}<div class="btn-row"><button class="btn btn-ghost" data-action="close">Cancel</button><button class="btn" data-action="save-level" data-id="${l ? l.id : ''}">Save level</button></div>`);
+}
+function rewardForm(r) {
+  const ms = Object.entries({ track:'Full track completed on time', streak:'On-time streak of N levels', xp:'Team XP reaches N' }).map(([k, v]) => `<option value="${k}"${(r ? r.milestone : 'track') === k ? ' selected' : ''}>${v}</option>`).join('');
+  return shell(r ? 'Edit reward' : 'New reward', `
+    <div class="field"><label for="rf-name">Reward</label><input type="text" id="rf-name" value="${esc(r ? r.name : '')}" placeholder="e.g. Cinema tickets"></div>
+    <div class="field"><label for="rf-desc">Description</label><input type="text" id="rf-desc" value="${esc(r ? r.description : '')}" placeholder="What each member gets"></div>
+    <div class="field-row"><div class="field"><label for="rf-ms">Unlocked by</label><select id="rf-ms">${ms}</select></div>
+    <div class="field"><label for="rf-n">N (streak length or XP)</label><input type="number" id="rf-n" min="0" value="${r ? r.threshold : 0}"></div></div>
+    <p class="hint">Every member of a team that reaches the milestone unlocks one of these.</p>`,
+    `${r ? `<button class="btn btn-danger btn-sm" data-action="delete-reward" data-id="${r.id}" data-confirm>Delete reward</button>` : '<span></span>'}<div class="btn-row"><button class="btn btn-ghost" data-action="close">Cancel</button><button class="btn" data-action="save-reward" data-id="${r ? r.id : ''}">Save reward</button></div>`);
+}
+function celebrationHTML() {
+  const c = ui.celebration;
+  return `<div class="scrim center" data-action="close-cel"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(c.title)}" style="--team:${c.color || 'var(--gold)'}"><div class="celebrate">
+    <span class="cel-medal">${ic(c.icon || 'trophy')}</span><p class="eyebrow">${esc(c.eyebrow || 'Level up')}</p><h2>${esc(c.title)}</h2>
+    <ul class="cel-lines">${c.lines.map(x => `<li>${ic(x.icon || 'star')}<span>${esc(x.text)}</span></li>`).join('')}</ul>
+    <button class="btn" data-action="close-cel">Nice</button></div></div></div>`;
+}
+function celebrate(c) { ui.celebration = c; render(); confetti(c.color); }
+
+function confetti(teamCol) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = document.createElement('canvas'); cv.className = 'confetti'; document.body.appendChild(cv);
+  const ctx = cv.getContext('2d'); const dpr = window.devicePixelRatio || 1;
+  const W = innerWidth, H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.scale(dpr, dpr);
+  const css = getComputedStyle(document.documentElement);
+  const cols = [teamCol, css.getPropertyValue('--gold'), css.getPropertyValue('--accent'), css.getPropertyValue('--ok'), css.getPropertyValue('--violet'), css.getPropertyValue('--orange')].map(x => (x || '').trim()).filter(x => x && !x.startsWith('var'));
+  const P = Array.from({ length:170 }, () => ({ x:W / 2 + (Math.random() - .5) * 80, y:H * .38, vx:(Math.random() - .5) * 13, vy:-Math.random() * 13 - 4, s:5 + Math.random() * 6, c:cols[Math.floor(Math.random() * cols.length)] || '#e0a', r:Math.random() * 6, vr:(Math.random() - .5) * .35 }));
+  const t0 = performance.now();
+  (function frame(t) {
+    const el = t - t0; ctx.clearRect(0, 0, W, H);
+    for (const p of P) { p.vy += .32; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.globalAlpha = Math.max(0, 1 - el / 3000); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); }
+    if (el < 3000) requestAnimationFrame(frame); else cv.remove();
+  })(t0);
+}
+function toast(msg, kind) {
+  const el = document.createElement('div'); el.className = 'toast' + (kind === 'bad' ? ' bad' : ''); el.textContent = msg;
+  $('#toasts').appendChild(el); setTimeout(() => el.remove(), 4200);
+}
+function rewardLines(fresh) {
+  const byReward = {};
+  for (const u of fresh) { const k = u.rewardId + '|' + u.teamId; (byReward[k] = byReward[k] || []).push(u); }
+  return Object.values(byReward).map(us => { const r = S.rewards.find(x => x.id === us[0].rewardId), t = teamOf(us[0].teamId); return { icon:'gift', text:`${r ? r.name : 'Reward'} unlocked for all ${us.length} ${t ? t.name : ''} members` }; });
+}
+function checkSeen() {
+  if (!S || isManager() || ui.celebration) return;
+  const m = me(); if (!m) return;
+  const seen = lsGet(LS_SEEN) || [];
+  const unseen = S.unlocks.filter(u => u.memberId === m.id && !seen.includes(u.id));
+  if (!unseen.length) return;
+  lsSet(LS_SEEN, [...seen, ...unseen.map(u => u.id)]);
+  celebrate({ eyebrow:'Reward unlocked', title:unseen.length > 1 ? `You unlocked ${unseen.length} rewards` : 'You unlocked a reward', icon:'gift', color:teamColor(m.team),
+    lines:unseen.map(u => { const r = S.rewards.find(x => x.id === u.rewardId); return { icon:'gift', text:`${r ? r.name : 'Reward'} · ${r ? milestoneText(r).toLowerCase() : ''}` }; }) });
+}
+
+// ---------- actions ----------
+const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+const armed = new WeakMap();
+function needsConfirm(btn) {
+  if (btn.dataset.confirm == null) return false;
+  if (btn.classList.contains('armed')) return false;
+  const orig = btn.textContent; btn.classList.add('armed'); btn.textContent = 'Click again to confirm';
+  clearTimeout(armed.get(btn)); armed.set(btn, setTimeout(() => { btn.classList.remove('armed'); btn.textContent = orig; }, 4000));
+  return true;
+}
+
+const actions = {
+  tab(b) { ui.tab = b.dataset.tab; ui.levelId = null; saveUi(); render(); window.scrollTo({ top:0 }); },
+  'pick-team'(b) { ui.teamId = b.dataset.id; saveUi(); render(); },
+  'goto-track'(b) { ui.teamId = b.dataset.id; ui.tab = 'track'; saveUi(); render(); window.scrollTo({ top:0 }); },
+  'open-level'(b) { ui.levelId = b.dataset.id; ui.modal = null; render(); const d = $('.drawer'); if (d) { d.scrollTop = 0; $('.drawer .close')?.focus(); } },
+  close() { ui.levelId = null; ui.modal = null; render(); },
+  'close-scrim'(b, e) { if (e.target === b) actions.close(); },
+  'close-cel'(b, e) { if (e.target !== b && !b.classList.contains('btn')) return; ui.celebration = null; render(); },
+  'load-sample'() { S = buildSample(Date.now()); normalize(S); fixRole(); save(); render(); },
+  'start-empty'() { S = { version:1, settings:{ managerName:'Manager', managerTitle:'Head of Marketing', streakBonus:25 }, teams:[], levels:[], rewards:[], unlocks:[] }; ui.tab = 'setup'; save(); render(); },
+
+  'toggle-task'(b) {
+    const l = levelOf(b.dataset.level);
+    if (!l || !canWork(l) || !['in_progress','revision'].includes(l.status)) { render(); return; }
+    mutate(() => { const k = l.tasks.find(x => x.id === b.dataset.id); if (!k) return false; k.done = !k.done; k.doneBy = k.done ? myName() : null; k.doneAt = k.done ? Date.now() : null; });
+  },
+  async 'submit-level'(b) {
+    const l = levelOf(b.dataset.id); if (!l || !canWork(l)) return;
+    if (!l.tasks.length || l.tasks.some(k => !k.done)) { toast('Tick every task before submitting.', 'bad'); return; }
+    const link = val('sub-link-' + l.id), note = val('sub-note-' + l.id), file = ui.files[l.id];
+    if (!link && !file) { toast('Add a link or attach a file so the reviewer can see the work.', 'bad'); document.getElementById('sub-link-' + l.id)?.focus(); return; }
+    if (link && !/^https?:\/\//i.test(link)) { toast('Links need to start with https://', 'bad'); return; }
+    if (!note) { toast('Add a short note for the reviewer.', 'bad'); document.getElementById('sub-note-' + l.id)?.focus(); return; }
+    let fileUrl = '', fileName = '';
+    if (file && store.assets) {
+      ui.busy[l.id] = true; render();
+      try { const up = await store.assets.upload(file); fileUrl = up.url; fileName = file.name; }
+      catch (e) { ui.busy[l.id] = false; render(); toast('The file could not be uploaded. Try a smaller file, or share a link instead.', 'bad'); return; }
+      ui.busy[l.id] = false;
+    }
+    const wasRevision = l.status === 'revision';
+    mutate(() => { const v = l.thread.filter(x => x.type === 'submission').length + 1; l.thread.push({ id:uid('s'), type:'submission', at:Date.now(), by:myName(), version:v, link, fileName, fileUrl, note }); l.status = 'submitted'; });
+    delete ui.files[l.id];
+    ['sub-link-', 'sub-note-'].forEach(p => { const el = document.getElementById(p + l.id); if (el) el.value = ''; });
+    toast(wasRevision ? 'Resubmitted. The manager has been asked to review again.' : 'Submitted for review.');
+  },
+  'start-revision'(b) {
+    const l = levelOf(b.dataset.id); if (!l || !canWork(l) || l.status !== 'feedback') return;
+    mutate(() => { l.status = 'revision'; l.thread.push({ id:uid('y'), type:'system', at:Date.now(), by:myName(), text:'started the revision' }); });
+  },
+  approve(b) {
+    const l = levelOf(b.dataset.id); if (!l || !isManager() || l.status !== 'submitted') return;
+    const text = val('fb-' + l.id) || 'Approved.';
+    const now = Date.now(), onTime = now <= l.deadline;
+    const r = mutate(() => { l.status = 'complete'; l.approvedAt = now; l.onTime = onTime; l.thread.push({ id:uid('f'), type:'feedback', at:now, by:myName(), decision:'approve', text }); });
+    const t = teamOf(l.teamId), s = teamStats(t), e = s.earned[l.id];
+    const next = levelsOf(t.id).find(x => x.order === l.order + 1);
+    if (onTime) {
+      const lines = [{ icon:'bolt', text:`+${e ? e.xp : l.xp} XP for ${t.name}${e && e.bonus ? ` (incl. +${e.bonus} streak bonus)` : ''}` }, { icon:'star', text:`Badge earned: ${l.badge || l.title}` }];
+      if (s.streak > 1) lines.push({ icon:'flame', text:`On-time streak: ${s.streak} levels` });
+      if (r && r.fresh.length) lines.push(...rewardLines(r.fresh));
+      if (next) lines.push({ icon:'lock', text:`Level ${next.order} · ${next.title} is now unlocked` });
+      ui.levelId = null;
+      celebrate({ eyebrow:`${t.name} · Level ${l.order}`, title:`${l.title} complete`, icon:'trophy', color:teamColor(t), lines });
+    } else {
+      toast(`Approved. It finished after the deadline, so no XP or badge.${next ? ` Level ${next.order} is unlocked.` : ''}`);
+      if (r && r.fresh.length) celebrate({ eyebrow:'Reward unlocked', title:'Milestone reached', icon:'gift', color:teamColor(t), lines:rewardLines(r.fresh) });
+    }
+  },
+  'request-changes'(b) {
+    const l = levelOf(b.dataset.id); if (!l || !isManager() || l.status !== 'submitted') return;
+    const text = val('fb-' + l.id);
+    if (!text) { toast('Write what needs to change so the team can act on it.', 'bad'); document.getElementById('fb-' + l.id)?.focus(); return; }
+    mutate(() => { l.status = 'feedback'; l.thread.push({ id:uid('f'), type:'feedback', at:Date.now(), by:myName(), decision:'changes', text }); });
+    const el = document.getElementById('fb-' + l.id); if (el) el.value = '';
+    toast('Feedback sent. The level is back with the team.');
+  },
+  claim(b) { if (!isManager()) return; mutate(st => { const u = st.unlocks.find(x => x.id === b.dataset.id); if (!u) return false; u.claimedAt = Date.now(); }); toast('Marked as claimed.'); },
+  unclaim(b) { if (!isManager()) return; mutate(st => { const u = st.unlocks.find(x => x.id === b.dataset.id); if (!u) return false; u.claimedAt = null; }); },
+
+  'setup-team'(b) { ui.setupTeamId = b.dataset.id; render(); },
+  'new-team'() { ui.modal = { kind:'team' }; render(); $('#tf-name')?.focus(); },
+  'edit-team'(b) { ui.modal = { kind:'team', id:b.dataset.id }; render(); },
+  'save-team'(b) {
+    const name = val('tf-name'); if (!name) { toast('Give the team a name.', 'bad'); return; }
+    const names = val('tf-members').split('\n').map(x => x.trim()).filter(Boolean);
+    const id = b.dataset.id;
+    mutate(st => {
+      let t = st.teams.find(x => x.id === id);
+      if (!t) { t = { id:uid('t'), name, color:'blue', objective:'', members:[] }; st.teams.push(t); ui.setupTeamId = t.id; }
+      t.name = name; t.objective = val('tf-obj'); t.color = val('tf-color') || 'blue';
+      const old = t.members; t.members = names.map(n => old.find(m => m.name === n) || { id:uid('m'), name:n });
+      st.unlocks = st.unlocks.filter(u => u.teamId !== t.id || t.members.some(m => m.id === u.memberId));
+    });
+    ui.modal = null; fixRole(); render(); toast('Team saved.');
+  },
+  'delete-team'(b) {
+    if (needsConfirm(b)) return;
+    mutate(st => { st.teams = st.teams.filter(t => t.id !== b.dataset.id); });
+    ui.modal = null; fixRole(); render(); toast('Team deleted.');
+  },
+  'new-level'() { ui.modal = { kind:'level' }; render(); $('#lf-title')?.focus(); },
+  'edit-level'(b) { ui.modal = { kind:'level', id:b.dataset.id }; render(); },
+  'save-level'(b) {
+    const title = val('lf-title'); if (!title) { toast('Give the level a name.', 'bad'); return; }
+    const dl = new Date(val('lf-deadline')).getTime(); if (!isFinite(dl)) { toast('Set a deadline for the level.', 'bad'); return; }
+    const tasks = val('lf-tasks').split('\n').map(x => x.trim()).filter(Boolean);
+    if (!tasks.length) { toast('Add at least one task.', 'bad'); return; }
+    const id = b.dataset.id;
+    mutate(st => {
+      let l = st.levels.find(x => x.id === id);
+      if (!l) { const n = st.levels.filter(x => x.teamId === ui.setupTeamId).length; l = { id:uid('l'), teamId:ui.setupTeamId, order:n + 1, status:'locked', startedAt:null, approvedAt:null, onTime:null, tasks:[], thread:[] }; st.levels.push(l); }
+      l.title = title; l.brief = val('lf-brief'); l.deadline = dl; l.xp = Math.max(0, Number(val('lf-xp')) || 0); l.badge = val('lf-badge') || title;
+      const old = l.tasks; l.tasks = tasks.map(x => old.find(k => k.text === x) || { id:uid('k'), text:x, done:false, doneBy:null, doneAt:null });
+      if (l.status === 'complete' && l.approvedAt) l.onTime = l.approvedAt <= l.deadline;
+    });
+    ui.modal = null; render(); toast('Level saved.');
+  },
+  'delete-level'(b) {
+    if (needsConfirm(b)) return;
+    mutate(st => { st.levels = st.levels.filter(l => l.id !== b.dataset.id); });
+    ui.modal = null; render(); toast('Level deleted.');
+  },
+  'move-level'(b) {
+    const l = levelOf(b.dataset.id); if (!l) return;
+    const ls = levelsOf(l.teamId), i = ls.indexOf(l), j = i + Number(b.dataset.dir);
+    if (j < 0 || j >= ls.length) return;
+    mutate(() => { const o = ls[j].order; ls[j].order = l.order; l.order = o; });
+  },
+  'new-reward'() { ui.modal = { kind:'reward' }; render(); $('#rf-name')?.focus(); },
+  'edit-reward'(b) { ui.modal = { kind:'reward', id:b.dataset.id }; render(); },
+  'save-reward'(b) {
+    const name = val('rf-name'); if (!name) { toast('Give the reward a name.', 'bad'); return; }
+    const id = b.dataset.id;
+    const r = mutate(st => {
+      let r = st.rewards.find(x => x.id === id);
+      if (!r) { r = { id:uid('r') }; st.rewards.push(r); }
+      r.name = name; r.description = val('rf-desc'); r.milestone = val('rf-ms') || 'track'; r.threshold = Math.max(0, Number(val('rf-n')) || 0);
+    });
+    ui.modal = null; render(); toast('Reward saved.');
+    if (r && r.fresh.length) celebrate({ eyebrow:'Reward unlocked', title:'Teams already qualify', icon:'gift', color:'', lines:rewardLines(r.fresh) });
+  },
+  'delete-reward'(b) {
+    if (needsConfirm(b)) return;
+    mutate(st => { st.rewards = st.rewards.filter(r => r.id !== b.dataset.id); });
+    ui.modal = null; render(); toast('Reward deleted.');
+  },
+  'save-settings'() {
+    mutate(st => { st.settings.managerName = val('set-mgr') || 'Manager'; st.settings.managerTitle = val('set-title'); st.settings.streakBonus = Math.max(0, Number(val('set-bonus')) || 0); });
+    toast('Rules saved.');
+  },
+  'reset-sample'(b) { if (needsConfirm(b)) return; S = buildSample(Date.now()); normalize(S); fixRole(); save(); render(); toast('Board reset to the sample data.'); },
+  'clear-board'(b) { if (needsConfirm(b)) return; S = { version:1, settings:S.settings, teams:[], levels:[], rewards:[], unlocks:[] }; fixRole(); save(); render(); toast('Board cleared.'); }
+};
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-action]');
+  if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT') return;
+  const fn = actions[b.dataset.action];
+  if (fn) fn(b, e);
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'role-select') {
+    ui.role = el.value; ui.levelId = null; ui.modal = null;
+    const m = me(); if (m) ui.teamId = m.team.id;
+    fixRole(); saveUi(); render(); checkSeen(); return;
+  }
+  if (el.dataset.action === 'toggle-task') { actions['toggle-task'](el); return; }
+  if (el.dataset.action === 'pick-file') { const f = el.files && el.files[0]; if (f) ui.files[el.dataset.id] = f; else delete ui.files[el.dataset.id]; render(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (ui.celebration) { ui.celebration = null; render(); }
+  else if (ui.levelId || ui.modal) actions.close();
+});
+let lastW = innerWidth;
+addEventListener('resize', () => { if ((innerWidth <= 520) !== (lastW <= 520) && ui.tab === 'track') render(); lastW = innerWidth; });
+setInterval(() => {
+  document.querySelectorAll('[data-deadline]').forEach(el => {
+    const c = countdown(Number(el.dataset.deadline));
+    el.className = 'dl ' + c.cls; const sp = el.querySelector('span'); if (sp) sp.textContent = c.text;
+  });
+}, 30000);
+
+init();
+})();
+</script>
+
+</body>
+</html>
